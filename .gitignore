@@ -1,3 +1,5 @@
 node_modules/
-*.png
+/*.png
 .DS_Store
+__pycache__/
+reports/results-*.json
