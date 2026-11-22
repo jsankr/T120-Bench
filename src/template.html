@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T120 Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* layout: instrument bench. rail nav + dense cards; numerals in a condensed display face */
+  --bg:#ECEFED; --panel:#FAFBFA; --panel2:#F1F4F2; --ink:#12181B; --ink2:#4A5357; --muted:#7C8588; --line:#D5DBD8;
+  --accent:#0B6477; --accent-ink:#FFFFFF; --accent-soft:#D9ECEF;
+  --good:#0CA30C; --good-ink:#006300; --warn:#FAB219; --warn-ink:#7A5200; --crit:#D03B3B; --crit-ink:#A82424;
+  --s1:#2A78D6; --s2:#EB6834; --s3:#1BAF7A; --grid:#E1E4E1; --axis:#C3C8C5; --div-mid:#F0EFEC;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif; --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r:10px; color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0D1214; --panel:#161C1F; --panel2:#1C2427; --ink:#ECEFEE; --ink2:#B7BFC1; --muted:#7F888B; --line:#2A3438;
+  --accent:#56B9CB; --accent-ink:#06181C; --accent-soft:#12333A;
+  --good:#0CA30C; --good-ink:#4CCB4C; --warn:#FAB219; --warn-ink:#FAC64F; --crit:#D03B3B; --crit-ink:#F08080;
+  --s1:#3987E5; --s2:#D95926; --s3:#199E70; --grid:#252D30; --axis:#3A4448; --div-mid:#383835; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0D1214; --panel:#161C1F; --panel2:#1C2427; --ink:#ECEFEE; --ink2:#B7BFC1; --muted:#7F888B; --line:#2A3438;
+  --accent:#56B9CB; --accent-ink:#06181C; --accent-soft:#12333A;
+  --good:#0CA30C; --good-ink:#4CCB4C; --warn:#FAB219; --warn-ink:#FAC64F; --crit:#D03B3B; --crit-ink:#F08080;
+  --s1:#3987E5; --s2:#D95926; --s3:#199E70; --grid:#252D30; --axis:#3A4448; --div-mid:#383835; color-scheme:dark;}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:400 14px/1.45 var(--body);-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{margin:0;text-wrap:balance}
+.num{font-family:var(--display);font-variant-numeric:tabular-nums;font-weight:600;letter-spacing:.01em}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.app{display:grid;grid-template-columns:200px 1fr;grid-template-rows:auto auto 1fr;height:100%}
+.simbar{grid-column:1/-1;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;padding:4px 16px;background:var(--warn);color:#1b1400;font:600 12px/1.4 var(--body);letter-spacing:.04em;text-align:center}
+.simbar[hidden]{display:none}
+.top{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{font:700 22px/1 var(--display);letter-spacing:.04em;text-transform:uppercase}
+.brand small{display:block;font:500 11px/1.2 var(--body);letter-spacing:0;text-transform:none;color:var(--muted);margin-top:2px}
+.top .sp{flex:1}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);font-size:12px;font-weight:500;white-space:nowrap}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.chip.good i{background:var(--good)} .chip.warn i{background:var(--warn)} .chip.crit i{background:var(--crit)}
+.chip.twin{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.chip.ecu{border-color:var(--good);color:var(--good-ink)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:6px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel);font-weight:500;cursor:pointer}
+a.btn{text-decoration:none;color:var(--ink)} a.btn.pri{color:var(--accent-ink)}
+.btn:hover{border-color:var(--accent)} .btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{border-color:var(--crit);color:var(--crit-ink)}
+.btn.sm{min-height:30px;padding:3px 10px;font-size:13px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+nav{background:var(--panel);border-right:1px solid var(--line);padding:12px 8px;display:flex;flex-direction:column;gap:2px;overflow:auto}
+nav a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:var(--ink2);text-decoration:none;font-weight:500}
+nav a svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+nav a[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
+nav a:hover{color:var(--ink)}
+main{overflow:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.view{display:none;flex-direction:column;gap:14px} .view.on{display:flex}
+.vh{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.vh h2{font:600 26px/1.1 var(--display);letter-spacing:.02em;text-transform:uppercase}
+.vh p{margin:0;color:var(--ink2);max-width:65ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;min-width:0}
+.card h3{font:600 12px/1.2 var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);margin-bottom:10px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.note{color:var(--ink2);font-size:13px;margin:0;max-width:70ch}
+.tag{display:inline-block;padding:1px 7px;border-radius:5px;font:500 11px/1.5 var(--mono);background:var(--panel2);border:1px solid var(--line);color:var(--ink2);white-space:nowrap}
+.tag.model{border-style:dashed}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill.pass{background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good-ink)}
+.pill.warn{background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--warn-ink)}
+.pill.fail{background:color-mix(in srgb,var(--crit) 16%,transparent);color:var(--crit-ink)}
+.pill.idle{background:var(--panel2);color:var(--muted)}
+/* dock */
+.dock{background:var(--panel);border:1px solid var(--accent);border-radius:var(--r);padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+.dock summary{cursor:pointer;display:flex;gap:10px;align-items:center;flex-wrap:wrap;list-style:none}
+.dock summary::-webkit-details-marker{display:none}
+.dock summary span.t{color:var(--ink2);font-size:13px}
+.ctl{display:flex;gap:14px;flex-wrap:wrap;align-items:center;padding-top:8px}
+.ctl label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2)}
+.ctl input[type=range]{width:120px;accent-color:var(--accent)}
+.ctl input[type=number],.ctl select,.fld{min-height:32px;padding:3px 8px;border:1px solid var(--line);border-radius:7px;background:var(--panel2)}
+.ctl output{font:500 13px var(--mono);min-width:3ch;color:var(--ink)}
+/* live */
+.live{display:grid;grid-template-columns:minmax(280px,380px) 1fr;gap:14px}
+.gauge{display:flex;flex-direction:column;align-items:center;gap:8px}
+.gauge svg{width:100%;max-width:340px;height:auto}
+.gauge .big{font:700 64px/0.9 var(--display)}
+.gstats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%}
+.gstats div{background:var(--panel2);border-radius:8px;padding:8px;text-align:center}
+.gstats b{display:block;font:600 28px/1 var(--display)}
+.gstats span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-content:start}
+.tile{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:8px;padding:10px 12px;min-width:0}
+.tile.ok{border-left-color:var(--good)} .tile.warn{border-left-color:var(--warn)} .tile.crit{border-left-color:var(--crit)} .tile.na{opacity:.6}
+.tile .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:flex;justify-content:space-between;gap:6px}
+.tile .v{font:600 32px/1.05 var(--display);font-variant-numeric:tabular-nums;margin-top:4px}
+.tile .v small{font:500 13px var(--body);color:var(--ink2);margin-left:4px}
+.tile .bar{height:4px;border-radius:2px;background:var(--panel2);margin-top:8px;overflow:hidden}
+.tile .bar i{display:block;height:100%;background:var(--accent);border-radius:2px;width:0}
+.tile .st{font-size:11px;font-weight:600;margin-top:5px;min-height:15px}
+.tile.warn .st{color:var(--warn-ink)} .tile.crit .st{color:var(--crit-ink)} .tile.ok .st{color:var(--good-ink)}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.chart{position:relative}
+.chart canvas{display:block;width:100%;height:170px;touch-action:pan-y}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-bottom:6px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:3px;border-radius:2px;flex:none} .legend i.dash{background:repeating-linear-gradient(90deg,currentColor 0 4px,transparent 4px 7px)!important;color:var(--muted)}
+.legend b{font:500 12px var(--mono);color:var(--ink)}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);padding:6px 9px;border-radius:6px;font:400 11px/1.5 var(--mono);white-space:nowrap;display:none;z-index:5}
+/* systems */
+.flow{display:flex;gap:6px;flex-wrap:wrap;align-items:stretch}
+.node{flex:1 1 130px;background:var(--panel2);border-radius:8px;padding:10px;position:relative;min-width:0}
+.node h4{margin:0 0 6px;font:600 11px/1.2 var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.node dl{margin:0;display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:12px}
+.node dt{color:var(--ink2)} .node dd{margin:0;font:500 12px var(--mono);text-align:right}
+.arrow{align-self:center;color:var(--muted);font-size:18px;flex:none}
+table{border-collapse:collapse;width:100%}
+.scroll{overflow-x:auto}
+.chs td,.chs th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;vertical-align:middle}
+.chs th{font:600 11px var(--body);text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.chs td.v{font:500 14px var(--mono);text-align:right;white-space:nowrap}
+.chs .mbar{width:90px;height:5px;background:var(--panel2);border-radius:3px;overflow:hidden}
+.chs .mbar i{display:block;height:100%;background:var(--accent)}
+.chs svg{width:90px;height:22px;display:block}
+.chs tr.na td{color:var(--muted)}
+/* maps */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel2)}
+.seg button{border:0;background:none;padding:6px 12px;cursor:pointer;font-weight:500;color:var(--ink2);min-height:34px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.mapt{border-collapse:separate;border-spacing:2px;font:500 12px var(--mono);font-variant-numeric:tabular-nums}
+.mapt th{font-weight:500;color:var(--muted);padding:3px 5px;white-space:nowrap;cursor:pointer;text-align:center}
+.mapt td{min-width:44px;height:30px;text-align:center;border-radius:4px;cursor:pointer;user-select:none;position:relative}
+.mapt td.sel{outline:2px solid var(--ink);outline-offset:-2px}
+.mapt td.cur::after{content:"";position:absolute;inset:-3px;border:2px solid var(--s2);border-radius:6px;pointer-events:none}
+.mapt td.chg::before{content:"";position:absolute;top:2px;right:2px;width:5px;height:5px;border-radius:50%;background:currentColor}
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.checks li{display:grid;grid-template-columns:62px 1fr;gap:10px;align-items:start;font-size:13px}
+.checks li b{display:block;font-weight:500} .checks li span.d{color:var(--ink2);font-size:12px}
+/* write lab */
+.steps{display:flex;flex-direction:column;gap:10px;counter-reset:st}
+.step{display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:start}
+.step>.n{counter-increment:st;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:600 16px var(--display);background:var(--panel2);border:1px solid var(--line)}
+.step>.n::before{content:counter(st)}
+.step.done>.n{background:var(--good);border-color:var(--good);color:#fff}
+.step.bad>.n{background:var(--crit);border-color:var(--crit);color:#fff}
+.step .body{display:flex;flex-direction:column;gap:8px;min-width:0}
+.step .head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.step .head b{font-size:15px}
+.blocks{display:grid;grid-template-columns:repeat(16,1fr);gap:3px;max-width:420px}
+.blocks i{aspect-ratio:1;border-radius:3px;background:var(--panel2);border:1px solid var(--line)}
+.blocks i.w{background:var(--accent);border-color:var(--accent)} .blocks i.v{background:var(--good);border-color:var(--good)} .blocks i.x{background:var(--crit);border-color:var(--crit)}
+.log{font:400 12px/1.6 var(--mono);background:var(--panel2);border-radius:8px;padding:10px;max-height:190px;overflow:auto;margin:0;list-style:none}
+.log li.bad{color:var(--crit-ink)} .log li.good{color:var(--good-ink)} .log li.warn{color:var(--warn-ink)}
+.lock{border:1px dashed var(--crit);border-radius:8px;padding:12px;background:color-mix(in srgb,var(--crit) 6%,transparent)}
+.lock ul{margin:6px 0 0;padding-left:18px;color:var(--ink2);font-size:13px}
+/* faults */
+.dtc{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.dtc code{font:600 20px var(--display);letter-spacing:.03em}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:13px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-family:var(--mono);overflow-wrap:anywhere}
+.pidgrid{display:flex;flex-wrap:wrap;gap:4px}
+.pidgrid span{font:500 11px var(--mono);padding:2px 6px;border-radius:4px;border:1px solid var(--line);color:var(--muted)}
+.pidgrid span.y{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+/* reports */
+.stats td,.stats th{padding:6px 8px;border-bottom:1px solid var(--line);font-size:13px;text-align:right}
+.stats td:first-child,.stats th:first-child{text-align:left}
+.stats th{font:600 11px var(--body);text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.stats td{font-family:var(--mono)} .stats td:first-child{font-family:var(--body)}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.sum div{background:var(--panel2);border-radius:8px;padding:10px}
+.sum b{display:block;font:600 28px/1 var(--display)} .sum span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+
+/* diagnose */
+.dgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,420px);gap:14px;align-items:start}
+.dside{position:sticky;top:0;display:flex;flex-direction:column;gap:14px}
+.find{background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.find.critical{border-left-color:var(--crit)} .find.warn{border-left-color:var(--warn)} .find.info{border-left-color:var(--accent)} .find.resolved{opacity:.72;border-left-style:dashed}
+.find .fh{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.find .fh h4{margin:0;font:600 16px/1.3 var(--body);flex:1 1 220px}
+.find details>summary{cursor:pointer;color:var(--accent);font-weight:500;font-size:13px}
+.find h5{margin:6px 0 4px;font:600 11px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.find p{margin:0;font-size:13.5px;color:var(--ink2);max-width:72ch}
+.find ol,.find ul{margin:0;padding-left:20px;font-size:13.5px;display:flex;flex-direction:column;gap:3px}
+.evt{width:100%;border-collapse:collapse;font-size:13px}
+.evt td{padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.evt td:nth-child(2){font-family:var(--mono);white-space:nowrap}
+.src{display:inline-block;font:500 10.5px/1.5 var(--body);padding:0 6px;border-radius:4px;border:1px solid var(--line);color:var(--ink2);white-space:nowrap;cursor:help;margin-left:4px;vertical-align:1px}
+.src.triumph{border-color:var(--accent);color:var(--accent)} .src.manual{border-style:dashed;border-color:var(--accent);color:var(--accent)} .src.app{border-style:dotted} .src.forum{color:var(--warn-ink);border-color:var(--warn)} .src.user{border-color:var(--good);color:var(--good-ink)}
+.pchips{display:flex;flex-wrap:wrap;gap:6px}
+.pchip{border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:3px 10px;font-size:12.5px;cursor:pointer}
+.pchip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.pchip.nopin{border-style:dashed}
+#bike{width:100%;height:auto;display:block}
+#bike .ln{fill:none;stroke:var(--ink2);stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+#bike .fl{fill:var(--panel2);stroke:var(--ink2);stroke-width:3}
+#bike .pin circle{fill:var(--muted);stroke:var(--panel);stroke-width:3}
+#bike .pin.on circle.c{fill:var(--crit)}
+#bike .pin.on circle.h{fill:none;stroke:var(--crit);stroke-width:4;opacity:.6}
+#bike .lbl text{font:600 30px var(--body);fill:var(--ink);paint-order:stroke;stroke:var(--panel);stroke-width:8px}
+#bike .lbl{pointer-events:none}
+@media (prefers-reduced-motion:no-preference){#bike .pin.on circle.h{animation:pulse 1.4s ease-out infinite;transform-box:fill-box;transform-origin:center}@keyframes pulse{from{transform:scale(.6);opacity:.9}to{transform:scale(2.2);opacity:0}}}
+.ploc{display:flex;flex-direction:column;gap:8px;font-size:13px}
+.ploc div{border-top:1px solid var(--line);padding-top:8px}
+.ploc b{display:block}
+.tests{display:flex;flex-wrap:wrap;gap:8px}
+.runner{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--panel2)}
+.runner ol{margin:0;padding-left:20px;font-size:13.5px}
+.prog{height:8px;border-radius:4px;background:var(--panel);overflow:hidden;border:1px solid var(--line)}
+.prog i{display:block;height:100%;width:0;background:var(--accent)}
+.res td,.res th{padding:6px 8px;border-bottom:1px solid var(--line);font-size:13px;text-align:left;vertical-align:top}
+.res th{font:600 11px var(--body);text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.res td.mono{font-family:var(--mono);white-space:nowrap}
+.cov{display:flex;flex-wrap:wrap;gap:6px}
+.cov span{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--line)}
+.cov span.y{border-color:var(--good);color:var(--good-ink)} .cov span.n{color:var(--muted);text-decoration:line-through}
+.toasts{position:fixed;right:16px;top:64px;display:flex;flex-direction:column;gap:8px;z-index:60;max-width:360px}
+.toast{background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--warn);border-radius:8px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.18);cursor:pointer;font-size:13px}
+.toast.critical{border-left-color:var(--crit)} .toast b{display:block;font-size:14px}
+.chip.diag{cursor:pointer;text-decoration:none;color:var(--ink)}
+.symp{display:flex;flex-wrap:wrap;gap:6px}
+@media (max-width:860px){.dgrid{grid-template-columns:1fr}.dside{position:static;order:-1}.toasts{left:12px;right:12px;top:auto;bottom:72px;max-width:none}}
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal.on{display:flex}
+.modal .box{background:var(--panel);border-radius:12px;padding:18px;max-width:560px;width:100%;max-height:90%;overflow:auto;display:flex;flex-direction:column;gap:12px;border:1px solid var(--line)}
+.modal h3{font:600 20px var(--display);text-transform:uppercase;letter-spacing:.02em}
+.modal textarea{width:100%;height:200px;font:12px var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px}
+.modal ul{margin:0;padding-left:18px;color:var(--ink2)} .modal p{margin:0;color:var(--ink2)}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto auto 1fr auto}
+  main{grid-row:3} nav{grid-row:4;flex-direction:row;border-right:0;border-top:1px solid var(--line);padding:4px;justify-content:space-around;overflow-x:auto}
+  nav a{flex-direction:column;gap:2px;font-size:9.5px;padding:6px 2px;min-width:0;flex:1 1 0;text-align:center}
+  .live{grid-template-columns:1fr} main{padding:12px}
+  .brand small{display:none} .top{padding:8px 12px;gap:8px}
+  .tiles{grid-template-columns:repeat(2,1fr)} .ctl input[type=range]{width:100px}
+}
+@media (prefers-reduced-motion:no-preference){.needle{transition:transform .12s linear}.tile .bar i,.chs .mbar i{transition:width .2s linear}}
+@media print{
+  .top,nav,.dock,.noprint{display:none!important} .app{display:block;height:auto} main{overflow:visible;padding:0}
+  .view{display:none!important} #v-reports{display:flex!important} body{background:#fff} .card{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">T120 Bench<small>Bonneville T120 liquid-cooled, 2018</small></div>
+    <span class="chip twin" id="srcChip">Digital twin</span>
+    <span class="chip" id="linkChip"><i></i><span>Link</span></span>
+    <span class="chip" id="milChip"><i></i><span>MIL</span></span>
+    <a class="chip diag" id="diagChip" href="#diagnose"><i></i><span>No issues</span></a>
+    <span class="sp"></span>
+    <button class="btn pri" id="btnConnect">Connect OBD adapter</button>
+  </header>
+  <div class="simbar" id="simbar" role="status">SIMULATED DATA · Digital twin model, not readings from a motorcycle</div>
+  <nav id="nav" aria-label="Sections"></nav>
+  <main id="main">
+    <details class="dock" id="dock" open>
+      <summary><span class="chip twin">Twin controls</span><span class="t">Simulated bike. Nothing in this panel touches a real ECU.</span></summary>
+      <div class="ctl">
+        <label><input type="checkbox" id="cIgn" checked> Ignition</label>
+        <button class="btn sm" id="cStart">Stop engine</button>
+        <label><input type="checkbox" id="cAuto" checked> Auto ride</label>
+        <label for="cGrip">Twist grip <input type="range" id="cGrip" min="0" max="100" value="0"><output id="oGrip">0%</output></label>
+        <label for="cGear">Gear <select id="cGear"><option value="0">N</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
+        <label for="cBrake">Brake <input type="range" id="cBrake" min="0" max="100" value="0"></label>
+        <label for="cAmb">Ambient <input type="number" id="cAmb" min="-10" max="50" value="30" style="width:64px"> °C</label>
+      </div>
+    </details>
+
+    <section class="view" id="v-live">
+      <div class="live">
+        <div class="card gauge">
+          <svg viewBox="0 0 300 230" id="tach" role="img" aria-label="Tachometer"></svg>
+          <div class="gstats">
+            <div><b id="gSpeed">0</b><span>km/h</span></div>
+            <div><b id="gGear">N</b><span>Gear</span></div>
+            <div><b id="gLoop">-</b><span>Fuelling</span></div>
+          </div>
+          <div class="row" id="gChips"></div>
+        </div>
+        <div class="tiles" id="tiles"></div>
+      </div>
+      <div class="charts" id="liveCharts"></div>
+    </section>
+
+    <section class="view" id="v-diagnose">
+      <div class="vh"><h2>Diagnose</h2><p id="dgSub">Checks the data from the ECU against Triumph's published figures and known faults, then says what to check and where it is.</p></div>
+      <div class="row" id="dgSum"></div>
+      <div class="dgrid">
+        <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+          <div id="dgList" style="display:flex;flex-direction:column;gap:10px"></div>
+          <div class="card"><h3>Guided tests</h3><p class="note" style="margin-bottom:10px">Short tests that put the bike in a known state so the checks can be exact. Each takes under a minute.</p>
+            <div class="tests" id="dgTests"></div><div id="dgRunner" style="margin-top:12px"></div></div>
+          <div class="card"><h3>What the app can check on this bike</h3><div class="cov" id="dgCov"></div><p class="note" style="margin-top:8px">Crossed-out checks need a signal this ECU does not publish over standard OBD.</p></div>
+          <div class="card"><h3>Reference values</h3><div class="scroll"><table class="stats" id="dgRef"></table></div>
+            <h3 style="margin-top:14px">Not available to the app</h3><ul class="note" id="dgNa" style="padding-left:18px;margin:0"></ul>
+            <h3 style="margin-top:14px">Your manual values (optional)</h3><p class="note">Enter figures from your own service manual to switch on extra checks. They stay in this browser and are labelled as yours.</p>
+            <div class="ctl" id="dgUser"></div></div>
+          <div class="card" id="dgTwin"><h3>Twin fault simulator</h3><p class="note" style="margin-bottom:8px">Give the twin a physical fault and watch the checks find it. Only the twin is affected.</p><div class="symp" id="dgSymp"></div></div>
+        </div>
+        <div class="dside">
+          <div class="card"><h3>Where on the bike</h3>
+            <svg id="bike" viewBox="0 0 1000 480" role="img" aria-label="Right side schematic of the motorcycle with part positions"></svg>
+            <p class="note" style="font-size:12px">Right side, schematic, not to scale. Pins are placed only where a source gives the position.</p>
+            <div class="ploc" id="dgLoc"></div></div>
+          <div class="row noprint"><button class="btn" id="dgExport">Export diagnostic report</button><button class="btn" id="dgClear">Clear resolved</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="v-accel">
+      <div class="vh"><h2>Acceleration</h2><p>Timed from the ECU's road-speed signal. While this page is open the app polls only speed, rpm and throttle to raise the sample rate.</p></div>
+      <div class="tiles" id="accTiles"></div>
+      <div class="grid2">
+        <div class="card"><h3>Timed runs</h3><div class="scroll"><table class="stats" id="accTable"></table></div>
+          <div class="row noprint" style="margin-top:12px"><button class="btn pri" id="accLaunch">Run simulated launch</button><button class="btn" id="accReset">Reset results</button></div></div>
+        <div class="card"><h3>How the timing works</h3><p class="note" id="accNote"></p></div>
+      </div>
+      <div class="charts"><div class="card"><h3>Road speed, last 30 s</h3><div class="chart" id="accC1"></div></div><div class="card"><h3>Longitudinal acceleration, last 30 s</h3><div class="chart" id="accC2"></div></div></div>
+      <div class="card"><h3>Run history</h3><ul class="log" id="accRuns"></ul></div>
+    </section>
+
+    <section class="view" id="v-systems">
+      <div class="vh"><h2>Systems</h2><p>Every channel, grouped by system. A PID tag means the value came over OBD. A dashed tag means the twin modelled it and a real ECU does not publish it over standard OBD.</p></div>
+      <div class="card"><h3>Charge path</h3><div class="flow" id="flow"></div></div>
+      <div id="groups" class="grid2"></div>
+    </section>
+
+    <section class="view" id="v-maps">
+      <div class="vh"><h2>Maps</h2><p>Edit the twin's calibration. These tables are a representative model, not data read from your ECU.</p></div>
+      <div class="card">
+        <div class="row" style="margin-bottom:10px">
+          <div class="seg" id="segTable"></div>
+          <div class="seg" id="segMode"><button aria-pressed="true" data-m="0">Values</button><button aria-pressed="false" data-m="1">Change vs baseline</button></div>
+          <span class="sp" style="flex:1"></span>
+          <span class="tag" id="mapCur">operating point</span>
+        </div>
+        <div class="row noprint" id="mapTools" style="margin-bottom:10px"></div>
+        <div class="scroll" id="mapWrap"></div>
+        <p class="note" id="mapHint" style="margin-top:8px"></p>
+      </div>
+      <div class="grid2">
+        <div class="card"><h3>Virtual dyno, full throttle torque</h3><div class="chart" id="dynoT"></div></div>
+        <div class="card"><h3>Virtual dyno, full throttle power</h3><div class="chart" id="dynoP"></div></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><h3>Safety checks</h3><ul class="checks" id="mapChecks"></ul></div>
+        <div class="card"><h3>Map file</h3>
+          <dl class="kv" id="mapMeta"></dl>
+          <div class="row" style="margin-top:12px">
+            <button class="btn" id="mapExport">Export map JSON</button>
+            <label class="btn" for="mapImport">Import map JSON</label><input type="file" id="mapImport" accept=".json,application/json" hidden>
+            <a class="btn pri" href="#write-lab">Take to write lab</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="v-write-lab">
+      <div class="vh"><h2>Write lab</h2><p>Rehearse the whole write against the twin, including the failures, before any real ECU is involved.</p></div>
+      <div class="card"><div class="steps" id="steps"></div></div>
+    </section>
+
+    <section class="view" id="v-faults">
+      <div class="vh"><h2>Faults and ECU</h2><p>Stored codes, ECU identity and what this ECU publishes.</p></div>
+      <div class="grid2">
+        <div class="card"><h3>Fault codes</h3>
+          <div id="dtcList"></div>
+          <div class="row" style="margin-top:12px"><button class="btn" id="dtcRead">Read codes</button><button class="btn danger" id="dtcClear">Clear codes on ECU</button></div>
+          <div id="faultInject" style="margin-top:14px"></div>
+        </div>
+        <div class="card"><h3>ECU and adapter</h3><dl class="kv" id="ecuInfo"></dl></div>
+      </div>
+      <div class="card"><h3>Published live-data PIDs</h3><div class="pidgrid" id="pidGrid"></div><p class="note" style="margin-top:8px">Filled cells answered the support query. The app only polls those.</p></div>
+    </section>
+
+    <section class="view" id="v-reports">
+      <div class="vh"><h2>Session report</h2><p id="repSub"></p></div>
+      <div class="row noprint"><button class="btn pri" id="expCsv">Export log CSV</button><button class="btn" id="expJson">Export session JSON</button><button class="btn" id="expHtml">Export HTML report</button><button class="btn" id="expPrint">Print or save PDF</button><button class="btn" id="repReset">Start new session</button></div>
+      <div class="card"><h3>Summary</h3><div class="sum" id="repSum"></div></div>
+      <div class="grid2">
+        <div class="card"><h3>Engine speed over the session</h3><div class="chart" id="repC1"></div></div>
+        <div class="card"><h3>Temperatures over the session</h3><div class="chart" id="repC2"></div></div>
+      </div>
+      <div class="card"><h3>Channel statistics</h3><div class="scroll"><table class="stats" id="repStats"></table></div></div>
+      <div class="card"><h3>Events</h3><ul class="log" id="repEvents"></ul></div>
+    </section>
+  </main>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true"><div class="box" id="modalBox"></div></div>
+<script>/*CORE*/</script>
+<script>/*DIAG*/</script>
+<script>/*APP*/</script>
+</body>
+</html>
